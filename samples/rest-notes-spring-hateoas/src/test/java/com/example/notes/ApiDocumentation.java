@@ -54,6 +54,7 @@ import org.springframework.restdocs.constraints.ConstraintDescriptions;
 import org.springframework.restdocs.mockmvc.RestDocumentationResultHandler;
 import org.springframework.restdocs.payload.FieldDescriptor;
 import org.springframework.restdocs.payload.JsonFieldType;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.test.context.web.WebAppConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
@@ -67,11 +68,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @SpringApplicationConfiguration(classes = RestNotesSpringHateoas.class)
 @WebAppConfiguration
 public class ApiDocumentation {
-	
+
 	@Rule
 	public final RestDocumentation restDocumentation = new RestDocumentation("build/generated-snippets");
-	
-	private RestDocumentationResultHandler document; 
+
+	private RestDocumentationResultHandler document;
 
 	@Autowired
 	private NoteRepository noteRepository;
@@ -92,7 +93,7 @@ public class ApiDocumentation {
 		this.document = document("{method-name}",
 				preprocessRequest(prettyPrint()),
 				preprocessResponse(prettyPrint()));
-		
+
 		this.mockMvc = MockMvcBuilders.webAppContextSetup(this.context)
 				.apply(documentationConfiguration(this.restDocumentation))
 				.alwaysDo(this.document)
@@ -107,7 +108,7 @@ public class ApiDocumentation {
 				fieldWithPath("path").description("The path to which the request was made"),
 				fieldWithPath("status").description("The HTTP status code, e.g. `400`"),
 				fieldWithPath("timestamp").description("The time, in milliseconds, at which the error occurred")));
-		
+
 		this.mockMvc
 			.perform(get("/error")
 					.requestAttr(RequestDispatcher.ERROR_STATUS_CODE, 400)
@@ -130,7 +131,7 @@ public class ApiDocumentation {
 						linkWithRel("tags").description("The <<resources-tags,Tags resource>>")),
 				responseFields(
 						fieldWithPath("_links").description("<<resources-index-links,Links>> to other resources")));
-		
+
 		this.mockMvc.perform(get("/"))
 			.andExpect(status().isOk());
 	}
@@ -144,12 +145,12 @@ public class ApiDocumentation {
 		createNote("Hypertext Application Language (HAL)",
 				"http://stateless.co/hal_specification.html");
 		createNote("Application-Level Profile Semantics (ALPS)", "http://alps.io/spec/");
-		
+
 		this.document.snippets(
 				responseFields(
 						fieldWithPath("_embedded.notes").description("An array of <<resources-note, Note resources>>")));
 
-		this.mockMvc.perform(get("/notes"))
+		this.mockMvc.perform(get("/notes").with(SecurityMockMvcRequestPostProcessors.httpBasic("user", "password")))
 			.andExpect(status().isOk());
 	}
 
@@ -171,7 +172,7 @@ public class ApiDocumentation {
 		note.put("tags", Arrays.asList(tagLocation));
 
 		ConstrainedFields fields = new ConstrainedFields(NoteInput.class);
-		
+
 		this.document.snippets(
 				requestFields(
 						fields.withPath("title").description("The title of the note"),
@@ -207,7 +208,7 @@ public class ApiDocumentation {
 								this.objectMapper.writeValueAsString(note)))
 				.andExpect(status().isCreated()).andReturn().getResponse()
 				.getHeader("Location");
-		
+
 		this.document.snippets(
 				links(
 						linkWithRel("self").description("This <<resources-note,note>>"),
@@ -234,7 +235,7 @@ public class ApiDocumentation {
 		createTag("REST");
 		createTag("Hypermedia");
 		createTag("HTTP");
-		
+
 		this.document.snippets(
 				responseFields(
 						fieldWithPath("_embedded.tags").description("An array of <<resources-tag,Tag resources>>")));
@@ -249,7 +250,7 @@ public class ApiDocumentation {
 		tag.put("name", "REST");
 
 		ConstrainedFields fields = new ConstrainedFields(TagInput.class);
-		
+
 		this.document.snippets(
 				requestFields(
 						fields.withPath("name").description("The name of the tag")));
@@ -293,7 +294,7 @@ public class ApiDocumentation {
 		noteUpdate.put("tags", Arrays.asList(tagLocation));
 
 		ConstrainedFields fields = new ConstrainedFields(NotePatchInput.class);
-		
+
 		this.document.snippets(
 				requestFields(
 						fields.withPath("title")
@@ -324,7 +325,7 @@ public class ApiDocumentation {
 								this.objectMapper.writeValueAsString(tag)))
 				.andExpect(status().isCreated()).andReturn().getResponse()
 				.getHeader("Location");
-		
+
 		this.document.snippets(
 				links(
 						linkWithRel("self").description("This <<resources-tag,tag>>"),
@@ -354,7 +355,7 @@ public class ApiDocumentation {
 		tagUpdate.put("name", "RESTful");
 
 		ConstrainedFields fields = new ConstrainedFields(TagPatchInput.class);
-		
+
 		this.document.snippets(
 				requestFields(
 						fields.withPath("name").description("The name of the tag")));
